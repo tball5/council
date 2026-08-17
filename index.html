@@ -126,8 +126,8 @@
   .keeper .krole{
     display:block;margin-top:.3rem;
     font-family:'Cinzel',serif;font-style:italic;
-    font-size:.72rem;letter-spacing:.16em;
-    color:var(--ash);
+    font-size:.74rem;letter-spacing:.16em;
+    color:#c3ced8;
     text-shadow:0 2px 8px rgba(7,11,18,.95);
   }
   .arrow{
@@ -257,7 +257,6 @@
     <textarea id="message" placeholder="Speak to the Council…" maxlength="1000" aria-label="Message"></textarea>
     <button id="send" type="submit">SEND</button>
   </form>
-  <footer>May The Force Be With You</footer>
 </section>
 
 <!-- ══════════ ANCIENT RAIN ══════════ -->
@@ -371,7 +370,7 @@ const KEEPERS = [
     name: "Qui-Gon",                              // shown in chat
     display: "QUI-GON",                           // shown under the portrait
     role: "Keeper of the Council",
-    color: "#45f27d",                             // jedi green
+    color: "#4da6ff",                             // hologram blue
     aliases: ["qui-gon", "qui gon", "quigon", "jinn", "jedi"],
     md: "QUI_GON.md",
     img: "quigon.png",
@@ -407,7 +406,7 @@ const KEEPERS = [
     name: "Samwise",
     display: "SAMWISE",
     role: "Gardener",
-    color: "#5ab6ff",                             // bright blue
+    color: "#45f27d",                             // jedi green
     aliases: ["samwise", "sam", "gamgie"],
     md: "SAMWISE.md",
     img: "samwise.png",
@@ -478,7 +477,7 @@ function buildStage() {
     el.innerHTML =
       `<div class="halo" style="background:radial-gradient(ellipse 55% 55% at 50% 45%, ${k.color}2e, ${k.color}12 45%, transparent 72%)"></div>
        <div class="frame"><img src="${k.img}" alt="${k.display}" style="transform:scale(${k.zoom || 1})"></div>
-       <div class="kname" style="color:${k.color};text-shadow:0 0 22px ${k.color}80, 0 2px 12px rgba(7,11,18,.95)">${k.display}</div>
+       <div class="kname" style="color:#fff;text-shadow:0 0 22px ${k.color}66, 0 2px 12px rgba(7,11,18,.95)">${k.display}</div>
        <span class="krole">${k.role}</span>`;
     track.appendChild(el);
 
