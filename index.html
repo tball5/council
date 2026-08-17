@@ -330,7 +330,7 @@ const KEEPERS = [
     display: "QUI-GON JINN",                      // shown under the portrait
     role: "Keeper of the Council",
     color: "#45f27d",                             // jedi green
-    aliases: ["qui-gon", "qui gon", "quigon", "jinn"],
+    aliases: ["qui-gon", "qui gon", "quigon", "jinn", "jedi"],
     md: "QUI_GON.md",
     img: "quigon.png",
     verse: true,                                  // one sentence per line
@@ -346,19 +346,17 @@ const KEEPERS = [
     img: "xaximus.png",
     verse: false,                                 // normal prose
   },
-  /* ── Mario waits offstage. Add MARIO.md + mario.png, then uncomment. ──
   {
     key: "mario",
     name: "Mario",
     display: "MARIO",
-    role: "Your role here",
+    role: "Your role here",                       // edit this
     color: "#ff5a4d",                             // red
-    aliases: ["mario"],
+    aliases: ["mario", "plumber"],
     md: "MARIO.md",
     img: "mario.png",
     verse: false,
   },
-  */
 ];
 
 const firebaseConfig = {
@@ -454,8 +452,9 @@ async function enterCouncil() {
     renderMessage({ from: "human", name: "Anon", text: "Qui-Gon, Xaximus — I keep waiting for the right time to start." });
     renderMessage({ from: "quigon", text: "The right time is a story the fearful tell themselves, Anon. The flint is already in your hand. Strike it tonight." });
     renderMessage({ from: "xaximus", text: "He is right, though I would put it plainer: waiting is a decision you are already making, and it is the expensive one. Pick the smallest piece and ship it before you sleep." });
+    renderMessage({ from: "mario", text: "Both of them are right, and both of them are slow. Pick the pipe, jump in, and find out where it goes." });
     renderMessage({ from: "human", name: "Anon", text: "(preview mode — add your Firebase config and worker URL to bring the chamber to life)" });
-    stepForward("xaximus");
+    stepForward("mario");
     return;
   }
 
