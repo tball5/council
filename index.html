@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Council</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stone:#070b12;
+    --panel:#0d141f;
+    --panel-edge:#1c2a3a;
+    --holo:#4da6ff;
+    --holo-bright:#6cc0ff;     /* the send button's blade */
+    --holo-dim:#2a6db3;
+    --parchment:#e8ecf2;
+    --ash:#8a97a3;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--stone);
+    color:var(--parchment);
+    font-family:'Cormorant Garamond',serif;
+    font-size:19px;
+    line-height:1.5;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  #rain-canvas{position:fixed;inset:0;z-index:0;opacity:.65}
+  body::after{
+    content:"";
+    position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse 90% 80% at 50% 40%, transparent 30%, rgba(7,11,18,.75) 100%);
+  }
+  #gate,#room{position:relative;z-index:2}
+
+  /* ---------- gate (off by default) ---------- */
+  #gate{
+    min-height:100dvh;display:none;flex-direction:column;align-items:center;justify-content:center;
+    gap:2.2rem;padding:2rem;text-align:center;width:100%;
+  }
+  #gate .sigil{font-size:2rem;color:var(--ash);letter-spacing:.5em;text-indent:.5em;opacity:.85}
+  #gate h1{
+    font-family:'Cinzel',serif;font-weight:600;
+    font-size:clamp(1.6rem,5vw,2.4rem);letter-spacing:.28em;text-indent:.28em;
+  }
+  #gate p{color:var(--ash);font-style:italic;max-width:34ch}
+  #gate form{display:flex;flex-direction:column;gap:1rem;align-items:center}
+  #gate input{
+    background:rgba(7,11,18,.6);border:none;border-bottom:1px solid var(--panel-edge);
+    color:var(--parchment);font-family:'Cormorant Garamond',serif;font-size:1.3rem;
+    text-align:center;letter-spacing:.15em;padding:.5rem 1rem;width:min(320px,80vw);
+    outline:none;transition:border-color .4s;
+  }
+  #gate input:focus{border-bottom-color:var(--holo)}
+  #gate button{
+    background:rgba(7,11,18,.6);border:1px solid var(--holo-dim);color:var(--holo-bright);
+    font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.3em;text-indent:.3em;
+    padding:.8rem 2rem;cursor:pointer;transition:background .4s,color .4s;
+  }
+  #gate button:hover,#gate button:focus-visible{background:var(--holo-bright);color:var(--stone);outline:none}
+  #gate .wrong{color:#a0522d;font-style:italic;min-height:1.5em}
+
+  /* ---------- room ---------- */
+  #room{
+    display:none;flex-direction:column;align-items:center;
+    width:min(760px,100%);min-height:100dvh;padding:2rem 1rem 1rem;
+  }
+
+  /* ---------- the arc of keepers ---------- */
+  #arc{
+    display:flex;justify-content:center;align-items:flex-end;
+    gap:1.5rem;width:100%;padding:.5rem 0 .2rem;
+  }
+  .keeper{
+    position:relative;
+    width:clamp(120px,22vw,190px);
+    text-align:center;
+    opacity:.48;
+    filter:saturate(.55);
+    transform:scale(.92);
+    transition:opacity 1s ease, filter 1s ease, transform 1s ease;
+  }
+  .keeper:first-child{transform:scale(.92) rotate(-3deg)}
+  .keeper:last-child{transform:scale(.92) rotate(3deg)}
+  .keeper.speaking{
+    opacity:1;
+    filter:saturate(1);
+    transform:scale(1.1) rotate(0deg) translateY(-6px);
+    z-index:3;
+  }
+  .keeper .halo{
+    position:absolute;inset:-18% -20% 6%;
+    opacity:0;
+    transition:opacity 1.2s ease;
+    pointer-events:none;
+  }
+  .keeper.speaking .halo{opacity:1}
+  .keeper img{
+    position:relative;
+    width:100%;height:auto;display:block;   /* full image, never cropped */
+    -webkit-mask-image:radial-gradient(ellipse 70% 72% at 50% 45%, black 40%, transparent 97%);
+    mask-image:radial-gradient(ellipse 70% 72% at 50% 45%, black 40%, transparent 97%);
+  }
+  .keeper .kname{
+    font-family:'Cinzel',serif;font-weight:700;
+    font-size:.92rem;letter-spacing:.22em;text-indent:.22em;
+    margin-top:.3rem;
+    text-shadow:0 2px 10px rgba(7,11,18,.95);
+  }
+  .keeper .krole{
+    display:block;margin-top:.15rem;
+    font-family:'Cinzel',serif;font-style:italic;
+    font-size:.66rem;letter-spacing:.12em;
+    color:var(--ash);
+    text-shadow:0 2px 8px rgba(7,11,18,.95);
+  }
+
+  /* ---------- chat ---------- */
+  #scroll{
+    width:100%;flex:1;overflow-y:auto;
+    padding:.7rem .7rem 1rem;margin-top:.9rem;
+    scrollbar-width:thin;scrollbar-color:var(--panel-edge) transparent;
+    min-height:300px;max-height:56dvh;
+    background:rgba(7,11,18,.55);
+    border:1px solid rgba(28,42,58,.6);
+    border-radius:4px;
+    backdrop-filter:blur(2px);
+  }
+  .msg{margin-bottom:1.1rem;animation:ink .6s ease}
+  @keyframes ink{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.msg{animation:none}}
+  .msg .who{
+    display:inline-block;
+    font-family:'Cinzel',serif;font-size:1.05rem;font-weight:600;
+    letter-spacing:.22em;color:#cfdae4;text-transform:uppercase;
+    border-bottom:1px solid rgba(207,218,228,.28);
+    padding-bottom:.12rem;margin-bottom:.2rem;
+  }
+  .msg.keeper-msg .who{border-bottom:none}
+  .msg .text{
+    margin-top:.15rem;white-space:pre-wrap;overflow-wrap:break-word;
+    font-family:'IM Fell English',serif;font-size:1.02em;
+  }
+  .msg.keeper-msg .text{border-left:2px solid;padding-left:.9rem;font-size:1.06em}
+  .msg.pondering .text{color:var(--ash);font-style:italic}
+
+  /* ---------- composer ---------- */
+  #composer{
+    width:100%;display:flex;gap:.6rem;
+    padding:.9rem 0 1.2rem;margin-top:.8rem;
+    border-top:1px solid var(--panel-edge);
+  }
+  #composer input,#composer textarea{
+    background:rgba(13,20,31,.85);border:1px solid var(--panel-edge);
+    color:var(--parchment);font-family:'Cormorant Garamond',serif;font-size:1.05rem;
+    padding:.65rem .9rem;border-radius:3px;outline:none;transition:border-color .3s;
+  }
+  #composer input:focus,#composer textarea:focus{border-color:var(--holo-dim)}
+  #name{width:120px;flex-shrink:0}
+  #message{flex:1;resize:none;height:48px;line-height:1.3}
+  #send{
+    background:rgba(13,20,31,.85);border:1px solid var(--holo-dim);color:var(--holo-bright);
+    font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.2em;
+    padding:0 1.2rem;cursor:pointer;border-radius:3px;transition:background .3s,color .3s;
+  }
+  #send:hover,#send:focus-visible{background:var(--holo-bright);color:var(--stone);outline:none}
+  #send:disabled{opacity:.4;cursor:default}
+  #send:disabled:hover{background:rgba(13,20,31,.85);color:var(--holo-bright)}
+
+  footer{font-size:.8rem;color:var(--ash);letter-spacing:.15em;font-style:italic;padding-bottom:1rem}
+
+  @media (max-width:480px){
+    #composer{flex-wrap:wrap}
+    #name{width:100%}
+    #arc{gap:.6rem}
+    #scroll{padding:.6rem .5rem 1rem;max-height:48dvh}
+    .msg .text{font-size:14.5px;line-height:1.45}
+    .msg.keeper-msg .text{font-size:15px;padding-left:.7rem}
+    .msg .who{font-size:.88rem}
+    .keeper .kname{font-size:.72rem;letter-spacing:.14em}
+    .keeper .krole{font-size:.58rem}
+    footer{font-size:.72rem}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="rain-canvas" aria-hidden="true"></canvas>
+
+<!-- ══════════ THE GATE (enabled via REQUIRE_PASSWORD) ══════════ -->
+<section id="gate">
+  <div class="sigil">✦ ✦ ✦</div>
+  <h1>THE COUNCIL</h1>
+  <p>Beyond this door sit those who have pondered long. Speak the word, and enter.</p>
+  <form id="gateForm">
+    <input id="password" type="password" inputmode="numeric" placeholder="the word" autocomplete="off" aria-label="Password">
+    <button type="submit">ENTER THE COUNCIL</button>
+    <div class="wrong" id="wrong" aria-live="polite"></div>
+  </form>
+</section>
+
+<!-- ══════════ THE ROOM ══════════ -->
+<section id="room">
+  <div id="arc"></div>
+
+  <div id="scroll" aria-live="polite"></div>
+
+  <form id="composer">
+    <input id="name" type="text" placeholder="Your name" maxlength="24" aria-label="Your name">
+    <textarea id="message" placeholder="Speak to the Council…" maxlength="1000" aria-label="Message"></textarea>
+    <button id="send" type="submit">SEND</button>
+  </form>
+  <footer>May The Force Be With You</footer>
+</section>
+
+<!-- ══════════ ANCIENT RAIN ══════════ -->
+<script>
+(function(){
+  var rc = document.getElementById('rain-canvas');
+  var rctx = rc.getContext('2d');
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var fontSize = 16;
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*+-=[]{}|;:<>?/!～！￥（）【】';
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var BLUES = ['77,166,255', '98,184,255', '47,127,229', '150,205,255'];
+  var WHITE = '235,242,248';
+  var BLUE_GLOW = 'rgba(77,166,255,0.5)';
+
+  var columns = 0, drops = [];
+
+  function setup(){
+    rc.width = window.innerWidth * dpr;
+    rc.height = window.innerHeight * dpr;
+    rc.style.width = window.innerWidth + 'px';
+    rc.style.height = window.innerHeight + 'px';
+    rctx.setTransform(1,0,0,1,0,0);
+    rctx.scale(dpr, dpr);
+    rctx.fillStyle = '#070b12';
+    rctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+    columns = Math.floor(window.innerWidth / fontSize);
+    drops = [];
+    for (var i = 0; i < columns; i++){
+      drops.push({
+        y: Math.random() * window.innerHeight / fontSize,
+        color: BLUES[Math.floor(Math.random() * BLUES.length)],
+        speed: 0.35 + Math.random() * 0.5
+      });
+    }
+    if (reduced) drawFrozen();
+  }
+
+  function drawFrozen(){
+    rctx.font = fontSize + 'px monospace';
+    rctx.shadowColor = BLUE_GLOW;
+    rctx.shadowBlur = 6;
+    for (var i = 0; i < columns; i++){
+      var x = i * fontSize;
+      var start = Math.random() * window.innerHeight;
+      var len = 10 + Math.floor(Math.random() * 30);
+      for (var j = 0; j < len; j++){
+        var y = start + j * fontSize;
+        if (y < 0 || y > window.innerHeight) continue;
+        var ch = chars.charAt(Math.floor(Math.random() * chars.length));
+        var fade = 1 - (j / len);
+        var col = (ch >= '0' && ch <= '9') ? WHITE : drops[i].color;
+        rctx.fillStyle = 'rgba(' + col + ',' + (0.2 + fade * 0.55) + ')';
+        rctx.fillText(ch, x, y);
+      }
+    }
+    rctx.shadowBlur = 0;
+  }
+
+  var last = 0;
+  function tick(t){
+    if (t - last > 66){
+      last = t;
+      rctx.fillStyle = 'rgba(7,11,18,0.045)';
+      rctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      rctx.font = fontSize + 'px monospace';
+      rctx.shadowColor = BLUE_GLOW;
+      rctx.shadowBlur = 6;
+      for (var i = 0; i < columns; i++){
+        var d = drops[i];
+        var ch = chars.charAt(Math.floor(Math.random() * chars.length));
+        var x = i * fontSize;
+        var y = d.y * fontSize;
+        if (ch >= '0' && ch <= '9'){
+          rctx.fillStyle = 'rgba(' + WHITE + ',0.95)';
+        } else {
+          rctx.fillStyle = 'rgba(' + d.color + ',0.92)';
+        }
+        rctx.fillText(ch, x, y);
+        d.y += d.speed;
+        if (y > window.innerHeight && Math.random() > 0.955){ d.y = 0; }
+      }
+      rctx.shadowBlur = 0;
+    }
+    requestAnimationFrame(tick);
+  }
+
+  setup();
+  window.addEventListener('resize', setup);
+  if (!reduced) requestAnimationFrame(tick);
+})();
+</script>
+
+<script type="module">
+/* ══════════════════════════════════════════════════════════════
+   CONFIG
+   ══════════════════════════════════════════════════════════════ */
+const REQUIRE_PASSWORD = false;                // flip to true for the gate
+const COUNCIL_PASSWORD = "137942";             // numeric string
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
+
+const DISPLAY_LIMIT = 30;    // messages shown on screen
+const MEMORY_LIMIT  = 30;    // messages each keeper is given when summoned
+const MAX_MESSAGES  = 99;    // messages kept in Firebase
+
+/* ── THE ROSTER ── add a keeper by adding a block. Order = arc order. ── */
+const KEEPERS = [
+  {
+    key: "quigon",
+    name: "Qui-Gon",                              // shown in chat
+    display: "QUI-GON JINN",                      // shown under the portrait
+    role: "Keeper of the Council",
+    color: "#45f27d",                             // jedi green
+    aliases: ["qui-gon", "qui gon", "quigon", "jinn"],
+    md: "QUI_GON.md",
+    img: "quigon.png",
+    verse: true,                                  // one sentence per line
+  },
+  {
+    key: "xaximus",
+    name: "Xaximus",
+    display: "XAXIMUS",
+    role: "Advisor / Prophet",
+    color: "#f0c75e",                             // gold
+    aliases: ["xaximus", "xach", "zach"],
+    md: "XAXIMUS.md",
+    img: "xaximus.png",
+    verse: false,                                 // normal prose
+  },
+  /* ── Mario waits offstage. Add MARIO.md + mario.png, then uncomment. ──
+  {
+    key: "mario",
+    name: "Mario",
+    display: "MARIO",
+    role: "Your role here",
+    color: "#ff5a4d",                             // red
+    aliases: ["mario"],
+    md: "MARIO.md",
+    img: "mario.png",
+    verse: false,
+  },
+  */
+];
+
+const firebaseConfig = {
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
+};
+/* ══════════════════════════════════════════════════════════════ */
+
+let fb = null;
+async function loadFirebase() {
+  const base = "https://www.gstatic.com/firebasejs/10.12.2/";
+  const [appM, authM, dbM] = await Promise.all([
+    import(base + "firebase-app.js"),
+    import(base + "firebase-auth.js"),
+    import(base + "firebase-database.js"),
+  ]);
+  fb = { ...appM, ...authM, ...dbM };
+}
+
+const gate = document.getElementById("gate");
+const room = document.getElementById("room");
+const wrong = document.getElementById("wrong");
+const arc = document.getElementById("arc");
+const scroll = document.getElementById("scroll");
+const nameEl = document.getElementById("name");
+const msgEl = document.getElementById("message");
+const sendBtn = document.getElementById("send");
+
+const byKey = Object.fromEntries(KEEPERS.map(k => [k.key, k]));
+let db = null, previewMode = false;
+const souls = {};              // key -> .md text
+const log = [];                // shared transcript, oldest first
+const seen = new Set();        // firebase keys already handled
+
+/* ---------- build the arc ---------- */
+function buildArc() {
+  arc.innerHTML = "";
+  KEEPERS.forEach(k => {
+    const el = document.createElement("div");
+    el.className = "keeper";
+    el.id = "keeper-" + k.key;
+    el.innerHTML =
+      `<div class="halo" style="background:radial-gradient(ellipse 55% 55% at 50% 45%, ${k.color}26, ${k.color}0f 45%, transparent 72%)"></div>
+       <img src="${k.img}" alt="${k.display}">
+       <div class="kname" style="color:${k.color};text-shadow:0 0 18px ${k.color}66, 0 2px 10px rgba(7,11,18,.95)">${k.display}</div>
+       <span class="krole">${k.role}</span>`;
+    arc.appendChild(el);
+  });
+}
+
+function stepForward(key) {
+  document.querySelectorAll(".keeper").forEach(el => el.classList.remove("speaking"));
+  const el = document.getElementById("keeper-" + key);
+  if (el) el.classList.add("speaking");
+}
+
+/* ---------- gate ---------- */
+if (!REQUIRE_PASSWORD || sessionStorage.getItem("council") === "open") {
+  enterCouncil();
+} else {
+  gate.style.display = "flex";
+}
+
+document.getElementById("gateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (document.getElementById("password").value.trim() !== COUNCIL_PASSWORD) {
+    wrong.textContent = "The door does not move.";
+    return;
+  }
+  sessionStorage.setItem("council", "open");
+  await enterCouncil();
+});
+
+async function enterCouncil() {
+  gate.style.display = "none";
+  room.style.display = "flex";
+  buildArc();
+  nameEl.value = localStorage.getItem("councilName") || "";
+
+  // load every soul
+  await Promise.all(KEEPERS.map(async k => {
+    try {
+      const r = await fetch(k.md);
+      souls[k.key] = r.ok ? await r.text() : `You are ${k.name}.`;
+    } catch { souls[k.key] = `You are ${k.name}.`; }
+  }));
+
+  if (firebaseConfig.apiKey.startsWith("YOUR_")) {
+    previewMode = true;
+    renderMessage({ from: "human", name: "Anon", text: "Qui-Gon, Xaximus — I keep waiting for the right time to start." });
+    renderMessage({ from: "quigon", text: "The right time is a story the fearful tell themselves, Anon. The flint is already in your hand. Strike it tonight." });
+    renderMessage({ from: "xaximus", text: "He is right, though I would put it plainer: waiting is a decision you are already making, and it is the expensive one. Pick the smallest piece and ship it before you sleep." });
+    renderMessage({ from: "human", name: "Anon", text: "(preview mode — add your Firebase config and worker URL to bring the chamber to life)" });
+    stepForward("xaximus");
+    return;
+  }
+
+  try {
+    await loadFirebase();
+  } catch (err) {
+    renderMessage({ from: "human", name: "—", text: "The chamber cannot reach the archive. Refresh, or check the connection." });
+    console.error(err); return;
+  }
+
+  const app = fb.initializeApp(firebaseConfig);
+  await fb.signInAnonymously(fb.getAuth(app));
+  db = fb.getDatabase(app);
+
+  const messagesRef = fb.query(fb.ref(db, "council/messages"), fb.limitToLast(DISPLAY_LIMIT));
+  fb.onChildAdded(messagesRef, (snap) => absorb(snap.key, snap.val()));
+}
+
+/* ---------- messages ---------- */
+function absorb(key, m) {
+  if (!m || !m.text || seen.has(key)) return;
+  seen.add(key);
+  log.push(m);
+  if (log.length > 120) log.shift();
+  renderMessage(m);
+  if (byKey[m.from]) stepForward(m.from);
+}
+
+function renderMessage(m) {
+  const k = byKey[m.from];
+  const div = document.createElement("div");
+  div.className = "msg" + (k ? " keeper-msg" : "");
+  const who = document.createElement("div");
+  who.className = "who";
+  who.textContent = k ? k.name : (m.name || "Anon");
+  if (k) {
+    who.style.color = k.color;
+    who.style.textShadow = `0 0 14px ${k.color}59`;
+  }
+  const text = document.createElement("div");
+  text.className = "text";
+  if (k) text.style.borderLeftColor = k.color;
+  text.textContent = (k && k.verse)
+    ? m.text.replace(/([.!?\u2026])\s+/g, "$1\n")
+    : m.text;
+  div.append(who, text);
+  scroll.appendChild(div);
+  while (scroll.children.length > DISPLAY_LIMIT) scroll.removeChild(scroll.firstChild);
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
+function showPondering(k) {
+  clearPondering();
+  const div = document.createElement("div");
+  div.className = "msg keeper-msg pondering";
+  div.id = "pondering";
+  div.innerHTML = `<div class="who" style="color:${k.color}">${k.name}</div><div class="text" style="border-left-color:${k.color}">pondering…</div>`;
+  scroll.appendChild(div);
+  scroll.scrollTop = scroll.scrollHeight;
+}
+function clearPondering(){ document.getElementById("pondering")?.remove(); }
+
+/* ---------- who was summoned, and in what order ---------- */
+function summonedBy(text) {
+  const lower = text.toLowerCase();
+  const found = [];
+  for (const k of KEEPERS) {
+    let first = -1;
+    for (const a of k.aliases) {
+      const re = new RegExp("\\b" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
+      const m = lower.match(re);
+      if (m && (first === -1 || m.index < first)) first = m.index;
+    }
+    if (first !== -1) found.push({ keeper: k, at: first });
+  }
+  return found.sort((a, b) => a.at - b.at).map(f => f.keeper);   // first named speaks first
+}
+
+/* ---------- history handed to a keeper ---------- */
+function historyFor(key) {
+  const recent = log.slice(-MEMORY_LIMIT).map(m => {
+    if (m.from === key) return { role: "assistant", content: m.text };
+    const who = byKey[m.from] ? byKey[m.from].name : (m.name || "Anon");
+    return { role: "user", content: `${who}: ${m.text}` };
+  });
+  while (recent.length && recent[0].role !== "user") recent.shift();
+  return recent;
+}
+
+/* ---------- send ---------- */
+document.getElementById("composer").addEventListener("submit", sendMessage);
+msgEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(e); }
+});
+
+async function sendMessage(e) {
+  e.preventDefault();
+  const name = nameEl.value.trim() || "Anon";
+  const text = msgEl.value.trim();
+  if (!text) return;
+
+  if (previewMode) {
+    renderMessage({ from: "human", name, text });
+    renderMessage({ from: "human", name: "—", text: "The chamber is not yet awake — connect Firebase and the worker." });
+    msgEl.value = ""; return;
+  }
+  if (!db) return;
+
+  localStorage.setItem("councilName", name);
+  msgEl.value = "";
+  sendBtn.disabled = true;
+
+  try {
+    await post({ from: "human", name, text });
+
+    // each summoned keeper answers in turn; later ones hear the earlier replies
+    for (const k of summonedBy(text)) {
+      stepForward(k.key);
+      showPondering(k);
+      let reply = "";
+      try { reply = await ask(k); } catch (err) { console.error(err); }
+      clearPondering();
+      if (reply) await post({ from: k.key, name: k.name, text: reply });
+    }
+    trimCouncil();
+  } catch (err) {
+    clearPondering();
+    console.error(err);
+  } finally {
+    sendBtn.disabled = false;
+    msgEl.focus();
+  }
+}
+
+async function post(m) {
+  const r = await fb.push(fb.ref(db, "council/messages"), { ...m, at: fb.serverTimestamp() });
+  absorb(r.key, m);        // show it now; onChildAdded will dedupe
+}
+
+async function ask(k) {
+  const res = await fetch(AGENT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ system: souls[k.key], messages: historyFor(k.key) })
+  });
+  if (!res.ok) throw new Error("Agent endpoint returned " + res.status);
+  const data = await res.json();
+  return data.reply || "";
+}
+
+/* ---------- the archive keeps only 99 ---------- */
+async function trimCouncil() {
+  try {
+    const snap = await fb.get(fb.query(fb.ref(db, "council/messages"), fb.orderByKey()));
+    if (!snap.exists()) return;
+    const keys = Object.keys(snap.val()).sort();
+    const excess = keys.length - MAX_MESSAGES;
+    if (excess <= 0) return;
+    const updates = {};
+    keys.slice(0, excess).forEach(key => { updates[key] = null; });
+    await fb.update(fb.ref(db, "council/messages"), updates);
+  } catch (err) { console.error("trim failed", err); }
+}
+</script>
+</body>
+</html>
