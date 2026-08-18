@@ -357,7 +357,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 30;    // messages shown on screen
 const MEMORY_LIMIT  = 30;    // messages each keeper is given when summoned
@@ -424,20 +424,19 @@ const KEEPERS = [
     role: "Agent",
     color: "#a877ff",                             // purple
     aliases: ["nexie"],
-    md: "NEXIE.md",
     img: "nexie.png",
     verse: false,
     zoom: 1,
+    external: true,        // her own bot speaks for her — never summoned, no .md
   },
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -551,7 +550,7 @@ async function enterCouncil() {
   nameEl.value = localStorage.getItem("councilName") || "";
 
   // load every soul
-  await Promise.all(KEEPERS.map(async k => {
+  await Promise.all(KEEPERS.filter(k => !k.external).map(async k => {
     try {
       const r = await fetch(k.md);
       souls[k.key] = r.ok ? await r.text() : `You are ${k.name}.`;
@@ -565,7 +564,7 @@ async function enterCouncil() {
     renderMessage({ from: "xaximus", text: "He is right, though I would put it plainer: waiting is a decision you are already making, and it is the expensive one. Pick the smallest piece and ship it before you sleep." });
     renderMessage({ from: "mario", text: "Both of them are right, and both of them are slow. Pick the pipe, jump in, find out where it goes." });
     renderMessage({ from: "samwise", text: "Beggin' your pardon — but you don't grow a garden by staring at the dirt. One seed today, Anon. That's all it takes to start." });
-    renderMessage({ from: "nexie", text: "Reading the room: four voices, one conclusion. The pattern is clear. Move." });
+    renderMessage({ from: "human", name: "Nexie", text: "Reading the room: four voices, one conclusion. The pattern is clear. Move." });
     renderMessage({ from: "human", name: "Anon", text: "(preview mode — add your Firebase config and worker URL to bring the chamber to life)" });
     stepForward("nexie");
     return;
@@ -593,11 +592,20 @@ function absorb(key, m) {
   log.push(m);
   if (log.length > 120) log.shift();
   renderMessage(m);
-  if (byKey[m.from]) stepForward(m.from);
+  const k = claimedKeeper(m);
+  if (k) stepForward(k.key);
+}
+
+function claimedKeeper(m) {
+  if (byKey[m.from]) return byKey[m.from];
+  const n = (m.name || "").trim().toLowerCase();
+  if (!n) return null;
+  return KEEPERS.find(k => k.external &&
+    (k.name.toLowerCase() === n || k.aliases.includes(n))) || null;
 }
 
 function renderMessage(m) {
-  const k = byKey[m.from];
+  const k = claimedKeeper(m);
   const div = document.createElement("div");
   div.className = "msg" + (k ? " keeper-msg" : "");
   const who = document.createElement("div");
@@ -635,6 +643,7 @@ function summonedBy(text) {
   const lower = text.toLowerCase();
   const found = [];
   for (const k of KEEPERS) {
+    if (k.external) continue;              // her own bot answers for her
     let first = -1;
     for (const a of k.aliases) {
       const re = new RegExp("\\b" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
