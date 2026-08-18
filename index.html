@@ -357,11 +357,15 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 30;    // messages shown on screen
 const MEMORY_LIMIT  = 30;    // messages each keeper is given when summoned
 const MAX_MESSAGES  = 99;    // messages kept in Firebase
+const MAX_REPLIES   = 4;     // most keeper replies per human message (stops runaway chains)
+const KEEPERS_ANSWER_EACH_OTHER = true;   // a keeper naming another keeper summons them
+const FOLLOW_UP = "last";    // after speaking, a keeper answers ONE more message without being named.
+                             // "last" = only the most recent speaker | "all" = everyone who just spoke | "off"
 
 /* ── THE ROSTER ── add a keeper by adding a block. Order = arc order. ── */
 const KEEPERS = [
@@ -428,12 +432,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -460,6 +463,7 @@ const sendBtn = document.getElementById("send");
 const byKey = Object.fromEntries(KEEPERS.map(k => [k.key, k]));
 let db = null, previewMode = false;
 const souls = {};              // key -> .md text
+let followUp = [];             // keepers owed one un-summoned reply
 const log = [];                // shared transcript, oldest first
 const seen = new Set();        // firebase keys already handled
 
@@ -678,15 +682,44 @@ async function sendMessage(e) {
   try {
     await post({ from: "human", name, text });
 
-    // each summoned keeper answers in turn; later ones hear the earlier replies
-    for (const k of summonedBy(text)) {
+    // who answers: those named — or, if no one is named, whoever just spoke (one time)
+    let queue = summonedBy(text);
+    if (queue.length === 0 && FOLLOW_UP !== "off") {
+      queue = followUp.slice();          // they get one reply without being called
+    }
+    followUp = [];                        // the debt is settled either way
+    const spoken = new Set();
+    const order = [];
+    let replies = 0;
+
+    while (queue.length && replies < MAX_REPLIES) {
+      const k = queue.shift();
+      if (spoken.has(k.key)) continue;      // one turn each per message
+      spoken.add(k.key);
+
       stepForward(k.key);
       showPondering(k);
       let reply = "";
       try { reply = await ask(k); } catch (err) { console.error(err); }
       clearPondering();
-      if (reply) await post({ from: k.key, name: k.name, text: reply });
+      if (!reply) continue;
+
+      await post({ from: k.key, name: k.name, text: reply });
+      replies++;
+
+      // a keeper may call on another keeper by name
+      if (KEEPERS_ANSWER_EACH_OTHER) {
+        for (const other of summonedBy(reply)) {
+          if (other.key !== k.key && !spoken.has(other.key)) queue.push(other);
+        }
+      }
+      order.push(k);
     }
+
+    // whoever spoke may answer one more message unprompted
+    if (FOLLOW_UP === "last") followUp = order.slice(-1);
+    else if (FOLLOW_UP === "all") followUp = order;
+
     trimCouncil();
   } catch (err) {
     clearPondering();
