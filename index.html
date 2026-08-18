@@ -80,7 +80,7 @@
   }
   #viewport{
     position:relative;
-    width:min(330px,74vw);
+    width:min(430px,84vw);
     overflow:hidden;
     touch-action:pan-y;
   }
@@ -104,7 +104,7 @@
   @media (prefers-reduced-motion:reduce){.keeper .halo{animation:none}}
   .keeper .frame{
     position:relative;
-    height:clamp(230px,42vw,330px);        /* every keeper gets the same space */
+    height:clamp(280px,60vw,410px);        /* every keeper gets the same space */
     display:flex;align-items:flex-end;justify-content:center;
   }
   .keeper img{
@@ -116,19 +116,23 @@
     -webkit-mask-image:radial-gradient(ellipse 70% 72% at 50% 45%, black 40%, transparent 97%);
     mask-image:radial-gradient(ellipse 70% 72% at 50% 45%, black 40%, transparent 97%);
   }
+  .keeper .plate{
+    position:absolute;
+    left:0;right:0;bottom:2%;
+    z-index:3;
+    pointer-events:none;
+  }
   .keeper .kname{
-    position:relative;
     font-family:'Cinzel',serif;font-weight:700;
-    font-size:1.45rem;letter-spacing:.3em;text-indent:.3em;
-    margin-top:-1.4rem;
-    text-shadow:0 2px 12px rgba(7,11,18,.95);
+    font-size:1.6rem;letter-spacing:.3em;text-indent:.3em;
+    text-shadow:0 2px 14px rgba(7,11,18,1), 0 0 30px rgba(7,11,18,.9);
   }
   .keeper .krole{
-    display:block;margin-top:.3rem;
+    display:block;margin-top:.2rem;
     font-family:'Cinzel',serif;font-style:italic;
     font-size:.74rem;letter-spacing:.16em;
     color:#c3ced8;
-    text-shadow:0 2px 8px rgba(7,11,18,.95);
+    text-shadow:0 2px 10px rgba(7,11,18,1), 0 0 20px rgba(7,11,18,.9);
   }
   .arrow{
     position:absolute;top:38%;
@@ -161,7 +165,7 @@
     width:100%;flex:1;overflow-y:auto;
     padding:.7rem .7rem 1rem;margin-top:1.1rem;
     scrollbar-width:thin;scrollbar-color:var(--panel-edge) transparent;
-    min-height:300px;max-height:52dvh;
+    min-height:320px;max-height:58dvh;
     background:rgba(7,11,18,.55);
     border:1px solid rgba(28,42,58,.6);
     border-radius:4px;
@@ -177,12 +181,13 @@
     border-bottom:1px solid rgba(207,218,228,.28);
     padding-bottom:.12rem;margin-bottom:.2rem;
   }
-  .msg.keeper-msg .who{border-bottom:none}
+  .msg.keeper-msg .who{border-bottom:none;filter:brightness(1.18) saturate(1.05)}
   .msg .text{
     margin-top:.15rem;white-space:pre-wrap;overflow-wrap:break-word;
     font-family:'IM Fell English',serif;font-size:1.02em;
   }
   .msg.keeper-msg .text{border-left:2px solid;padding-left:.9rem;font-size:1.06em}
+  .msg.keeper-msg .text{border-left-color:inherit}
   .msg.pondering .text{color:var(--ash);font-style:italic}
 
   /* ---------- composer ---------- */
@@ -213,12 +218,12 @@
   @media (max-width:480px){
     #composer{flex-wrap:wrap}
     #name{width:100%}
-    #viewport{width:min(330px,68vw)}
-    #scroll{padding:.6rem .5rem 1rem;max-height:48dvh}
+    #viewport{width:min(430px,82vw)}
+    #scroll{padding:.6rem .5rem 1rem;max-height:53dvh}
     .msg .text{font-size:14.5px;line-height:1.45}
     .msg.keeper-msg .text{font-size:15px;padding-left:.7rem}
     .msg .who{font-size:.88rem}
-    .keeper .kname{font-size:1.2rem;letter-spacing:.24em;text-indent:.24em;margin-top:-1.1rem}
+    .keeper .kname{font-size:1.3rem;letter-spacing:.26em;text-indent:.26em}
     .keeper .krole{font-size:.66rem}
     .arrow{font-size:1.7rem}
     footer{font-size:.72rem}
@@ -357,7 +362,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 30;    // messages shown on screen
 const MEMORY_LIMIT  = 30;    // messages each keeper is given when summoned
@@ -374,12 +379,12 @@ const KEEPERS = [
     name: "Qui-Gon",                              // shown in chat
     display: "QUI-GON",                           // shown under the portrait
     role: "Keeper of the Council",
-    color: "#4da6ff",                             // hologram blue
+    color: "#4da6ff",                             // jedi blue
     aliases: ["qui-gon", "qui gon", "quigon", "jinn", "jedi"],
     md: "QUI_GON.md",
     img: "quigon.png",
     verse: true,                                  // one sentence per line
-    zoom: 1,                                      // nudge up if this portrait sits small
+    zoom: 1.18,                                   // nudge up if this portrait sits small
   },
   {
     key: "xaximus",
@@ -392,6 +397,19 @@ const KEEPERS = [
     img: "xaximus.png",
     verse: false,
     zoom: 1,
+  },
+  {
+    key: "nexie",
+    name: "Nexie",
+    display: "NEXIE",
+    role: "Agent",
+    color: "#a877ff",                             // purple
+    aliases: ["nexie"],
+    img: "nexie.png",
+    verse: false,
+    zoom: 1,
+    opacity: .6,           // she is only partly here
+    external: true,        // her own bot speaks for her — never summoned, no .md
   },
   {
     key: "mario",
@@ -410,34 +428,21 @@ const KEEPERS = [
     name: "Samwise",
     display: "SAMWISE",
     role: "Gardener",
-    color: "#45f27d",                             // jedi green
+    color: "#3ad46e",                             // jedi green, slightly softer
     aliases: ["samwise", "sam", "gamgie"],
     md: "SAMWISE.md",
     img: "samwise.png",
     verse: false,
     zoom: 1,
   },
-  {
-    key: "nexie",
-    name: "Nexie",
-    display: "NEXIE",
-    role: "Agent",
-    color: "#a877ff",                             // purple
-    aliases: ["nexie"],
-    img: "nexie.png",
-    verse: false,
-    zoom: 1,
-    external: true,        // her own bot speaks for her — never summoned, no .md
-  },
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -482,9 +487,13 @@ function buildStage() {
     el.id = "keeper-" + k.key;
     el.innerHTML =
       `<div class="halo" style="background:radial-gradient(ellipse 55% 55% at 50% 45%, ${k.color}2e, ${k.color}12 45%, transparent 72%)"></div>
-       <div class="frame"><img src="${k.img}" alt="${k.display}" style="transform:scale(${k.zoom || 1})"></div>
-       <div class="kname" style="color:#fff;text-shadow:0 0 22px ${k.color}66, 0 2px 12px rgba(7,11,18,.95)">${k.display}</div>
-       <span class="krole">${k.role}</span>`;
+       <div class="frame">
+         <img src="${k.img}" alt="${k.display}" style="transform:scale(${k.zoom || 1});opacity:${k.opacity || 1}">
+         <div class="plate">
+           <div class="kname" style="color:#fff;text-shadow:0 0 22px ${k.color}66, 0 2px 14px rgba(7,11,18,1)">${k.display}</div>
+           <span class="krole">${k.role}</span>
+         </div>
+       </div>`;
     track.appendChild(el);
 
     const dot = document.createElement("button");
