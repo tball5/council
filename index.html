@@ -218,6 +218,13 @@
 
   footer{font-size:.8rem;color:var(--ash);letter-spacing:.15em;font-style:italic;padding-bottom:1rem}
 
+  @media (min-width:481px){
+    #viewport{width:min(390px,80vw)}
+    .keeper .frame{height:clamp(260px,52vw,370px)}
+    .keeper.banner .frame{padding-bottom:3.6rem}   /* a little more air above the title */
+    #scroll{max-height:64dvh}
+  }
+
   @media (max-width:480px){
     #composer{flex-wrap:wrap}
     #name{width:100%}
@@ -365,7 +372,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 39;    // messages shown on screen
 const MEMORY_LIMIT  = 39;    // messages each keeper is given when summoned
@@ -385,7 +392,7 @@ const KEEPERS = [
     color: "#ffffff",                             // white dot
     aliases: [],
     img: "council.png",
-    opacity: .7,
+    opacity: .5,
     banner: true,        // the room itself — never speaks, never summoned, opens here
   },
   {
@@ -424,6 +431,7 @@ const KEEPERS = [
     img: "mario.png",
     verse: false,
     zoom: 1,
+    opacity: .8,
   },
   {
     key: "nexie",
@@ -468,23 +476,23 @@ const KEEPERS = [
     key: "sydney",
     name: "Sydney",
     display: "SYDNEY",
-    role: "Pop Diva",
+    role: "Marketing",
     color: "#ff5fa8",                             // hot pink
     aliases: ["sydney", "syd"],
     md: "SYDNEY.md",
     img: "sydney.png",
     verse: false,
     zoom: 1,
+    opacity: .6,
   },
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
