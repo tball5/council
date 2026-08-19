@@ -108,14 +108,16 @@
     height:clamp(280px,60vw,410px);        /* every keeper gets the same space */
     display:flex;align-items:flex-end;justify-content:center;
   }
+  .keeper.banner .frame{align-items:flex-start}   /* wide council image rides high */
+  .keeper.banner .plate{bottom:4%}
   .keeper img{
     position:relative;
     max-width:100%;max-height:100%;
     width:auto;height:auto;display:block;
     object-fit:contain;
     transform-origin:50% 100%;
-    -webkit-mask-image:radial-gradient(ellipse 70% 72% at 50% 45%, black 40%, transparent 97%);
-    mask-image:radial-gradient(ellipse 70% 72% at 50% 45%, black 40%, transparent 97%);
+    -webkit-mask-image:radial-gradient(ellipse 72% 72% at 50% 45%, black 64%, transparent 100%);
+    mask-image:radial-gradient(ellipse 72% 72% at 50% 45%, black 64%, transparent 100%);
   }
   .keeper .plate{
     position:absolute;
@@ -363,7 +365,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 39;    // messages shown on screen
 const MEMORY_LIMIT  = 39;    // messages each keeper is given when summoned
@@ -397,6 +399,7 @@ const KEEPERS = [
     img: "quigon.png",
     verse: true,                                  // one sentence per line
     zoom: 1,                                      // nudge up if this portrait sits small
+    opacity: .8,
   },
   {
     key: "xaximus",
@@ -446,6 +449,7 @@ const KEEPERS = [
     img: "thor.png",
     verse: false,
     zoom: 1,
+    opacity: .8,
   },
   {
     key: "samwise",
@@ -458,6 +462,7 @@ const KEEPERS = [
     img: "samwise.png",
     verse: false,
     zoom: 1,
+    opacity: .8,
   },
   {
     key: "sydney",
@@ -474,12 +479,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -520,7 +524,7 @@ function buildStage() {
   dots.innerHTML = "";
   KEEPERS.forEach((k, i) => {
     const el = document.createElement("div");
-    el.className = "keeper";
+    el.className = "keeper" + (k.banner ? " banner" : "");
     el.id = "keeper-" + k.key;
     el.innerHTML =
       `<div class="halo" style="background:radial-gradient(ellipse 55% 55% at 50% 45%, ${k.color}2e, ${k.color}12 45%, transparent 72%)"></div>
