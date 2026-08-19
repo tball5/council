@@ -119,12 +119,12 @@
     /* oval + a bite out of each top corner */
     -webkit-mask-image:
       radial-gradient(ellipse 66% 74% at 50% 52%, black 58%, transparent 100%),
-      radial-gradient(circle at 0% 0%, transparent 0%, transparent var(--bite-in,14%), black var(--bite-out,46%)),
-      radial-gradient(circle at 100% 0%, transparent 0%, transparent var(--bite-in,14%), black var(--bite-out,46%));
+      radial-gradient(circle at 0% 0%, transparent 0%, transparent var(--bite-in,10%), black var(--bite-out,36%)),
+      radial-gradient(circle at 100% 0%, transparent 0%, transparent var(--bite-in,10%), black var(--bite-out,36%));
     mask-image:
       radial-gradient(ellipse 66% 74% at 50% 52%, black 58%, transparent 100%),
-      radial-gradient(circle at 0% 0%, transparent 0%, transparent var(--bite-in,14%), black var(--bite-out,46%)),
-      radial-gradient(circle at 100% 0%, transparent 0%, transparent var(--bite-in,14%), black var(--bite-out,46%));
+      radial-gradient(circle at 0% 0%, transparent 0%, transparent var(--bite-in,10%), black var(--bite-out,36%)),
+      radial-gradient(circle at 100% 0%, transparent 0%, transparent var(--bite-in,10%), black var(--bite-out,36%));
     -webkit-mask-composite:source-in;
     mask-composite:intersect;
   }
@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 39;    // messages shown on screen
 const MEMORY_LIMIT  = 39;    // messages each keeper is given when summoned
@@ -440,7 +440,7 @@ const KEEPERS = [
     img: "mario.png",
     verse: false,
     zoom: 1,
-    biteIn: 4, biteOut: 22,   // gentler corner fade — keeps the wrench
+    biteIn: 2, biteOut: 13,   // gentlest corner fade — keeps the wrench
     opacity: .8,
   },
   {
@@ -498,12 +498,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -549,7 +548,7 @@ function buildStage() {
     el.innerHTML =
       `<div class="halo" style="background:radial-gradient(ellipse 55% 55% at 50% 45%, ${k.color}1c, ${k.color}0a 45%, transparent 72%)"></div>
        <div class="frame">
-         <img src="${k.img}" alt="${k.display}" style="transform:scale(${k.zoom || 1});opacity:${k.opacity || 1};--bite-in:${k.biteIn || 14}%;--bite-out:${k.biteOut || 46}%">
+         <img src="${k.img}" alt="${k.display}" style="transform:scale(${k.zoom || 1});opacity:${k.opacity || 1};--bite-in:${k.biteIn ?? 10}%;--bite-out:${k.biteOut ?? 36}%">
          <div class="plate">
            <div class="kname" style="color:#fff;text-shadow:0 0 16px ${k.color}40, 0 2px 14px rgba(7,11,18,1)">${k.display}</div>
            ${k.role ? `<span class="krole">${k.role}</span>` : ""}
