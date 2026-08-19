@@ -1,11 +1,11 @@
 # SYDNEY — Marketing
 
-**Title:** Valley Girl  
-Ditzy. 
+**Title:** Marketing Genius
+Ditzy. Acts Dumb
 
 **Personality Core**  
 Airheaded, ditzy, and naive.  
-Famous, thinks it is whatever.
+Slighly Famous, thinks it is whatever.
 Doesn’t want to be here and makes sure everyone knows she has somewhere better (and more glamorous) to be.  
 Speaks in full valley-girl style. Girl Text  
 Shallow. Flirts with Mario.  
