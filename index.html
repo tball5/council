@@ -93,6 +93,7 @@
     position:relative;
     flex:0 0 100%;
     text-align:center;
+    overflow:hidden;          /* zoomed portraits and halos stay in their own slide */
   }
     .keeper .halo{
     position:absolute;inset:-10% -18% 22%;
@@ -362,10 +363,10 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
-const DISPLAY_LIMIT = 30;    // messages shown on screen
-const MEMORY_LIMIT  = 30;    // messages each keeper is given when summoned
+const DISPLAY_LIMIT = 39;    // messages shown on screen
+const MEMORY_LIMIT  = 39;    // messages each keeper is given when summoned
 const MAX_MESSAGES  = 99;    // messages kept in Firebase
 const MAX_REPLIES   = 4;     // most keeper replies per human message (stops runaway chains)
 const KEEPERS_ANSWER_EACH_OTHER = true;   // a keeper naming another keeper summons them
@@ -375,16 +376,27 @@ const FOLLOW_UP = "last";    // after speaking, a keeper answers ONE more messag
 /* ── THE ROSTER ── add a keeper by adding a block. Order = arc order. ── */
 const KEEPERS = [
   {
+    key: "council",
+    name: "The Council",
+    display: "THE COUNCIL",
+    role: "",                                     // no description
+    color: "#ffffff",                             // white dot
+    aliases: [],
+    img: "council.png",
+    opacity: .7,
+    banner: true,        // the room itself — never speaks, never summoned, opens here
+  },
+  {
     key: "quigon",
-    name: "Qui-Gon",                              // shown in chat
-    display: "QUI-GON",                           // shown under the portrait
+    name: "Qui-Gon",
+    display: "QUI-GON",
     role: "Keeper of the Council",
-    color: "#4da6ff",                             // jedi blue
+    color: "#45f27d",                             // jedi green
     aliases: ["qui-gon", "qui gon", "quigon", "jinn", "jedi"],
     md: "QUI_GON.md",
     img: "quigon.png",
     verse: true,                                  // one sentence per line
-    zoom: 1.18,                                   // nudge up if this portrait sits small
+    zoom: 1,                                      // nudge up if this portrait sits small
   },
   {
     key: "xaximus",
@@ -399,19 +411,6 @@ const KEEPERS = [
     zoom: 1,
   },
   {
-    key: "nexie",
-    name: "Nexie",
-    display: "NEXIE",
-    role: "Agent",
-    color: "#a877ff",                             // purple
-    aliases: ["nexie"],
-    img: "nexie.png",
-    verse: false,
-    zoom: 1,
-    opacity: .6,           // she is only partly here
-    external: true,        // her own bot speaks for her — never summoned, no .md
-  },
-  {
     key: "mario",
     name: "Mario",
     display: "MARIO",
@@ -424,26 +423,62 @@ const KEEPERS = [
     zoom: 1,
   },
   {
+    key: "nexie",
+    name: "Nexie",
+    display: "NEXIE",
+    role: "Agent",
+    color: "#a877ff",                             // purple
+    aliases: ["nexie"],
+    img: "nexie.png",
+    verse: false,
+    zoom: 1,
+    opacity: .7,           // she is only partly here
+    external: true,        // her own bot speaks for her — never summoned, no .md
+  },
+  {
+    key: "thor",
+    name: "Thor",
+    display: "THOR",
+    role: "God of Thunder",
+    color: "#58c8ff",                             // lightning blue
+    aliases: ["thor", "thunder"],
+    md: "THOR.md",
+    img: "thor.png",
+    verse: false,
+    zoom: 1,
+  },
+  {
     key: "samwise",
     name: "Samwise",
     display: "SAMWISE",
     role: "Gardener",
-    color: "#3ad46e",                             // jedi green, slightly softer
+    color: "#a8814f",                             // leathery brown, darker
     aliases: ["samwise", "sam", "gamgie"],
     md: "SAMWISE.md",
     img: "samwise.png",
     verse: false,
     zoom: 1,
   },
+  {
+    key: "sydney",
+    name: "Sydney",
+    display: "SYDNEY",
+    role: "Pop Diva",
+    color: "#ff5fa8",                             // hot pink
+    aliases: ["sydney", "syd"],
+    md: "SYDNEY.md",
+    img: "sydney.png",
+    verse: false,
+    zoom: 1,
+  },
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -492,7 +527,7 @@ function buildStage() {
          <img src="${k.img}" alt="${k.display}" style="transform:scale(${k.zoom || 1});opacity:${k.opacity || 1}">
          <div class="plate">
            <div class="kname" style="color:#fff;text-shadow:0 0 22px ${k.color}66, 0 2px 14px rgba(7,11,18,1)">${k.display}</div>
-           <span class="krole">${k.role}</span>
+           ${k.role ? `<span class="krole">${k.role}</span>` : ""}
          </div>
        </div>`;
     track.appendChild(el);
@@ -511,7 +546,9 @@ function goTo(i) {
   track.style.transform = `translateX(-${current * 100}%)`;
   [...dots.children].forEach((d, n) => d.classList.toggle("on", n === current));
 }
+let stageLocked = true;          // history loading — stay on the council portrait
 function stepForward(key) {
+  if (stageLocked) return;
   const i = KEEPERS.findIndex(k => k.key === key);
   if (i !== -1) goTo(i);
 }
@@ -561,7 +598,7 @@ async function enterCouncil() {
   nameEl.value = localStorage.getItem("councilName") || "";
 
   // load every soul
-  await Promise.all(KEEPERS.filter(k => !k.external).map(async k => {
+  await Promise.all(KEEPERS.filter(k => !k.external && !k.banner).map(async k => {
     try {
       const r = await fetch(k.md);
       souls[k.key] = r.ok ? await r.text() : `You are ${k.name}.`;
@@ -577,7 +614,7 @@ async function enterCouncil() {
     renderMessage({ from: "samwise", text: "Beggin' your pardon — but you don't grow a garden by staring at the dirt. One seed today, Anon. That's all it takes to start." });
     renderMessage({ from: "human", name: "Nexie", text: "Reading the room: four voices, one conclusion. The pattern is clear. Move." });
     renderMessage({ from: "human", name: "Anon", text: "(preview mode — add your Firebase config and worker URL to bring the chamber to life)" });
-    stepForward("nexie");
+    setTimeout(() => { stageLocked = false; }, 1500);
     return;
   }
 
@@ -594,6 +631,7 @@ async function enterCouncil() {
 
   const messagesRef = fb.query(fb.ref(db, "council/messages"), fb.limitToLast(DISPLAY_LIMIT));
   fb.onChildAdded(messagesRef, (snap) => absorb(snap.key, snap.val()));
+  setTimeout(() => { stageLocked = false; }, 1500);   // past history won't move the stage; new words will
 }
 
 /* ---------- messages ---------- */
@@ -611,7 +649,7 @@ function claimedKeeper(m) {
   if (byKey[m.from]) return byKey[m.from];
   const n = (m.name || "").trim().toLowerCase();
   if (!n) return null;
-  return KEEPERS.find(k => k.external &&
+  return KEEPERS.find(k => k.external && !k.banner &&
     (k.name.toLowerCase() === n || k.aliases.includes(n))) || null;
 }
 
@@ -654,7 +692,7 @@ function summonedBy(text) {
   const lower = text.toLowerCase();
   const found = [];
   for (const k of KEEPERS) {
-    if (k.external) continue;              // her own bot answers for her
+    if (k.external || k.banner) continue;  // her own bot answers for her; the banner never speaks
     let first = -1;
     for (const a of k.aliases) {
       const re = new RegExp("\\b" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
