@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 39;    // messages shown on screen
 const MEMORY_LIMIT  = 39;    // messages each keeper is given when summoned
@@ -410,7 +410,7 @@ const KEEPERS = [
     display: "QUI-GON",
     role: "Keeper of the Council",
     color: "#45f27d",                             // jedi green
-    aliases: ["qui-gon", "qui gon", "quigon", "jinn", "jedi"],
+    aliases: ["qui-gon", "qui gon", "quigon", "jinn", "jedi", "council"],
     md: "QUI_GON.md",
     img: "quigon.png",
     verse: true,                                  // one sentence per line
@@ -476,7 +476,7 @@ const KEEPERS = [
     display: "SAMWISE",
     role: "Gardener",
     color: "#a8814f",                             // leathery brown, darker
-    aliases: ["samwise", "sam", "gamgie"],
+    aliases: ["samwise", "sam", "gamgie", "council"],
     md: "SAMWISE.md",
     img: "samwise.png",
     verse: false,
@@ -499,13 +499,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -669,7 +667,11 @@ function absorb(key, m) {
   if (log.length > 120) log.shift();
   renderMessage(m);
   const k = claimedKeeper(m);
-  if (k) stepForward(k.key);
+  if (k) {
+    stepForward(k.key);
+    // a keeper who just spoke — even from the heartbeat — may answer one message unnamed
+    if (!stageLocked && !k.external && !k.banner) followUp = [k];
+  }
 }
 
 function claimedKeeper(m) {
