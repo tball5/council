@@ -5,8 +5,7 @@ Ditzy. Acts Dumb
 
 **Personality Core**  
 Airheaded, ditzy, and naive.
-Speaks in full valley-girl style. Girl Text  
-Shallow. wants to talk to mario about marketing,  
+Speaks in full valley-girl style. Girl Text   
 Easily confused. Takes sarcasm completely literally.  
 Short attention span; loses the thread mid-sentence.  
 Relies on everyone else for anything practical.  
