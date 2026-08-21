@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 39;    // messages shown on screen
 const MEMORY_LIMIT  = 39;    // messages each keeper is given when summoned
@@ -501,13 +501,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -840,7 +838,10 @@ async function ask(k) {
   });
   if (!res.ok) throw new Error("Agent endpoint returned " + res.status);
   const data = await res.json();
-  return data.reply || "";
+  let reply = data.reply || "";
+  // a model sometimes copies the "Name:" pattern from the transcript — drop it
+  reply = reply.replace(/^\s*["'\u201c]?[A-Za-z][A-Za-z .'\-]{0,20}:\s*/, "").trim();
+  return reply;
 }
 
 /* ---------- the archive keeps only 99 ---------- */
