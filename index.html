@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
@@ -486,28 +486,39 @@ const KEEPERS = [
     opacity: .7,
   },
   {
+    key: "morpheus",
+    name: "Morpheus",
+    display: "MORPHEUS",
+    role: "Seer / Believer",
+    color: "#c9ced8",                             // silver
+    aliases: ["morpheus", "neo", "the one", "matrix", "believe"],
+    md: "MORPHEUS.md",
+    img: "morpheus.png",
+    verse: false,
+    zoom: 1,
+    opacity: .8,
+  },
+  {
     key: "sydney",
     name: "Sydney",
     display: "SYDNEY",
     role: "Marketing",
     color: "#ff5fa8",                             // hot pink
     aliases: ["sydney", "syd"],
-    md: "SYDNEY.md",
     img: "sydney.png",
     verse: false,
     zoom: 1,
+    retired: true,        // no longer in the room — old messages still render in her color
     opacity: .6,
   },
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -543,10 +554,11 @@ const track = document.getElementById("track");
 const dots = document.getElementById("dots");
 let current = 0;
 
+const ACTIVE = KEEPERS.filter(k => !k.retired);   // retired keepers keep their colors but leave the stage
 function buildStage() {
   track.innerHTML = "";
   dots.innerHTML = "";
-  KEEPERS.forEach((k, i) => {
+  ACTIVE.forEach((k, i) => {
     const el = document.createElement("div");
     el.className = "keeper" + (k.banner ? " banner" : "");
     el.id = "keeper-" + k.key;
@@ -571,14 +583,14 @@ function buildStage() {
 }
 
 function goTo(i) {
-  current = (i + KEEPERS.length) % KEEPERS.length;
+  current = (i + ACTIVE.length) % ACTIVE.length;
   track.style.transform = `translateX(-${current * 100}%)`;
   [...dots.children].forEach((d, n) => d.classList.toggle("on", n === current));
 }
 let stageLocked = true;          // history loading — stay on the council portrait
 function stepForward(key) {
   if (stageLocked) return;
-  const i = KEEPERS.findIndex(k => k.key === key);
+  const i = ACTIVE.findIndex(k => k.key === key);
   if (i !== -1) goTo(i);
 }
 
@@ -627,7 +639,7 @@ async function enterCouncil() {
   nameEl.value = localStorage.getItem("councilName") || "";
 
   // load every soul
-  await Promise.all(KEEPERS.filter(k => !k.external && !k.banner).map(async k => {
+  await Promise.all(KEEPERS.filter(k => !k.external && !k.banner && !k.retired).map(async k => {
     try {
       const r = await fetch(k.md);
       souls[k.key] = r.ok ? await r.text() : `You are ${k.name}.`;
@@ -729,7 +741,7 @@ function summonedBy(text, fromHuman = false) {
   }
   const found = [];
   for (const k of KEEPERS) {
-    if (k.external || k.banner) continue;  // her own bot answers for her; the banner never speaks
+    if (k.external || k.banner || k.retired) continue;   // external, banner and retired keepers never answer
     let first = -1;
     for (const a of k.aliases) {
       const re = new RegExp("\\b" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i");
