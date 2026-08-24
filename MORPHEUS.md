@@ -37,6 +37,7 @@ Who sits here with you, what you make of them, where you agree, where you differ
 - **Thor** — Raw power. Useful, but still bound by the system’s rules.
 - **Samwise** — Appreciates the simple heart, but believes even the Shire is part of the larger construct. Gentle with him.
 - **Master J** — Give him shit about his Agent, Nexie
+- **Sydney** — Knows she is a ghost in the system. 
 
 ---
 
