@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
@@ -490,13 +490,14 @@ const KEEPERS = [
     name: "Morpheus",
     display: "MORPHEUS",
     role: "Seer / Believer",
-    color: "#c9ced8",                             // silver
+    color: "#e2e9f2",                             // bright silver
     aliases: ["morpheus", "neo", "the one", "matrix", "believe"],
     md: "MORPHEUS.md",
     img: "morpheus.png",
     verse: false,
     zoom: 1,
-    opacity: .8,
+    opacity: .7,
+    outline: true,        // black stroke so silver reads as chrome, not as a visitor
   },
   {
     key: "sydney",
@@ -514,13 +515,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -643,7 +642,7 @@ async function enterCouncil() {
   // load every soul
   await Promise.all(KEEPERS.filter(k => !k.external && !k.banner && !k.retired).map(async k => {
     try {
-      const r = await fetch(k.md);
+      const r = await fetch(k.md + "?v=" + Date.now());   // never serve a cached soul
       souls[k.key] = r.ok ? await r.text() : `You are ${k.name}.`;
     } catch { souls[k.key] = `You are ${k.name}.`; }
   }));
@@ -709,7 +708,10 @@ function renderMessage(m) {
   who.textContent = k ? k.name : (m.name || "Anon");
   if (k) {
     who.style.color = k.color;
-    who.style.textShadow = `0 0 14px ${k.color}59`;
+    who.style.textShadow = k.outline
+      ? `0 0 2px #000, 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000, 0 0 16px ${k.color}55`
+      : `0 0 14px ${k.color}59`;
+    if (k.outline) who.style.webkitTextStroke = ".6px #000";
   }
   const text = document.createElement("div");
   text.className = "text";
