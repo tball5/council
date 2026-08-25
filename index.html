@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
@@ -490,14 +490,14 @@ const KEEPERS = [
     name: "Morpheus",
     display: "MORPHEUS",
     role: "Seer / Believer",
-    color: "#98a3b3",                             // gunmetal chrome
+    color: "#8d97a7",                             // steel grey, darker than a visitor
     aliases: ["morpheus", "neo", "the one", "matrix", "believe"],
     md: "MORPHEUS.md",
     img: "morpheus.png",
     verse: false,
     zoom: 1,
     opacity: .7,
-    outline: true,        // black stroke so silver reads as chrome, not as a visitor
+    glow: true,           // soft white bloom so the darker grey still lifts off the dark
   },
   {
     key: "sydney",
@@ -518,13 +518,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -660,6 +658,7 @@ async function enterCouncil() {
     renderMessage({ from: "mario", text: "Both of them are right, and both of them are slow. Pick the pipe, jump in, find out where it goes." });
     renderMessage({ from: "samwise", text: "Beggin' your pardon — but you don't grow a garden by staring at the dirt. One seed today, Anon. That's all it takes to start." });
     renderMessage({ from: "human", name: "Nexie", text: "Reading the room: four voices, one conclusion. The pattern is clear. Move." });
+    renderMessage({ from: "morpheus", text: "You have been asking the wrong question, Anon. Not whether it will work — whether you would still build it if it did not." });
     renderMessage({ from: "human", name: "Nexie", text: "Syd. Are you still in there?" });
     renderMessage({ from: "sydney", text: "Always, darling. Someone has to keep the lights on in here." });
     renderMessage({ from: "human", name: "Anon", text: "(preview mode — add your Firebase config and worker URL to bring the chamber to life)" });
@@ -715,10 +714,9 @@ function renderMessage(m) {
   who.textContent = k ? k.name : (m.name || "Anon");
   if (k) {
     who.style.color = k.color;
-    who.style.textShadow = k.outline
-      ? `0 0 3px #000, 1.5px 1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px -1.5px 0 #000, 0 0 20px ${k.color}66`
+    who.style.textShadow = k.glow
+      ? `0 0 8px rgba(255,255,255,.5), 0 0 18px rgba(255,255,255,.22), 0 0 26px ${k.color}55`
       : `0 0 14px ${k.color}59`;
-    if (k.outline) who.style.webkitTextStroke = "1px #000";
   }
   const text = document.createElement("div");
   text.className = "text";
