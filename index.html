@@ -381,13 +381,15 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
 const MAX_MESSAGES  = 99;    // messages kept in Firebase
-const MAX_REPLIES   = 4;     // most keeper replies per human message (stops runaway chains)
+const MAX_REPLIES   = 2;     // most keeper replies per message (1 = no chains at all)
 const KEEPERS_ANSWER_EACH_OTHER = true;   // a keeper naming another keeper summons them
+const OUTSIDE_DELAY_MS = 6000;            // wait before answering someone else's message, in case
+                                          // their own tab (perhaps an older version) is already on it
 const ANSWER_OUTSIDE_MESSAGES = true;     // reply to messages that arrive from outside this browser
                                           // (bots writing straight to Firebase, other people's tabs)
 const GROUP_WORD = "council";             // this word calls the keepers below — and no one else
@@ -520,13 +522,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -691,7 +691,7 @@ async function enterCouncil() {
 function absorb(key, m) {
   if (!m || !m.text || seen.has(key)) return;
   seen.add(key);
-  log.push(m);
+  log.push({ ...m, _key: key });
   if (log.length > 120) log.shift();
   renderMessage(m);
   const k = claimedKeeper(m);
@@ -831,8 +831,10 @@ async function sendMessage(e) {
     // who answers: those named — or, if no one is named, whoever just spoke (one time)
     let queue = summonedBy(text, true, name);
     const groupCall = new RegExp("\\b" + GROUP_WORD + "\\b", "i").test(text);
+    let isFollowUp = false;
     if (queue.length === 0 && FOLLOW_UP !== "off") {
       queue = followUp.slice();          // they get one reply without being called
+      isFollowUp = true;                 // and it stays one reply — no chain off a follow-up
     }
     followUp = [];                        // the debt is settled either way
     const spoken = new Set();
@@ -855,7 +857,7 @@ async function sendMessage(e) {
       replies++;
 
       // a keeper may call on another keeper by name
-      if (KEEPERS_ANSWER_EACH_OTHER && !groupCall) {
+      if (KEEPERS_ANSWER_EACH_OTHER && !groupCall && !isFollowUp) {
         for (const other of summonedBy(reply)) {
           if (other.key !== k.key && !spoken.has(other.key)) queue.push(other);
         }
@@ -902,6 +904,11 @@ async function claim(key) {
 
 /* ---------- answering messages this browser did not send ---------- */
 async function answerOutside(key, m) {
+  // give the sender's own tab a head start — if it answers, we stay out of it
+  await new Promise(r => setTimeout(r, OUTSIDE_DELAY_MS));
+  const at = log.findIndex(x => x._key === key);
+  if (at !== -1 && log.slice(at + 1).some(x => byKey[x.from] && !byKey[x.from].external)) return;
+
   const src = byKey[m.from];
   const speaker = src ? src.name : (m.name || "");   // "Nexie" whether she posts as a bot or types
   const called = summonedBy(m.text || "", true, speaker);
