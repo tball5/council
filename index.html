@@ -381,7 +381,7 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
@@ -495,7 +495,7 @@ const KEEPERS = [
     display: "MORPHEUS",
     role: "Seer / Believer",
     color: "#8d97a7",                             // steel grey, darker than a visitor
-    aliases: ["morpheus", "neo", "the one", "matrix", "believe"],
+    aliases: ["morpheus", "neo", "matrix"],   // "believe" and "the one" removed — too common in ordinary talk
     md: "MORPHEUS.md",
     img: "morpheus.png",
     verse: false,
@@ -522,13 +522,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -700,7 +698,7 @@ function absorb(key, m) {
   if (k) {
     stepForward(k.key);
     // a keeper who just spoke — even from the heartbeat — may answer one message unnamed
-    if (!stageLocked && !k.external && !k.banner && !k.ghost) followUp = [k];
+    if (!stageLocked && !ownKeys.has(key) && !k.external && !k.banner && !k.ghost) followUp = [k];
   }
   // a message from outside this browser (a bot, another tab) still deserves an answer
   const src = byKey[m.from];
@@ -868,7 +866,8 @@ async function sendMessage(e) {
     }
 
     // whoever spoke may answer one more message unprompted
-    const lasting = order.filter(x => !x.ghost);   // ghosts must be called by name every time
+    // only a summons earns a follow-up; a follow-up reply does not renew itself
+    const lasting = isFollowUp ? [] : order.filter(x => !x.ghost);
     if (FOLLOW_UP === "last") followUp = lasting.slice(-1);
     else if (FOLLOW_UP === "all") followUp = lasting;
 
