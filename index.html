@@ -381,13 +381,15 @@
    ══════════════════════════════════════════════════════════════ */
 const REQUIRE_PASSWORD = false;                // flip to true for the gate
 const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
 const MAX_MESSAGES  = 99;    // messages kept in Firebase
 const MAX_REPLIES   = 4;     // most keeper replies per human message (stops runaway chains)
 const KEEPERS_ANSWER_EACH_OTHER = true;   // a keeper naming another keeper summons them
+const ANSWER_OUTSIDE_MESSAGES = true;     // reply to messages that arrive from outside this browser
+                                          // (bots writing straight to Firebase, other people's tabs)
 const GROUP_WORD = "council";             // this word calls the keepers below — and no one else
 const GROUP_ANSWERS = ["quigon", "samwise"];
 const FOLLOW_UP = "last";    // after speaking, a keeper answers ONE more message without being named.
@@ -518,13 +520,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -554,6 +554,7 @@ const souls = {};              // key -> .md text
 let followUp = [];             // keepers owed one un-summoned reply
 const log = [];                // shared transcript, oldest first
 const seen = new Set();        // firebase keys already handled
+const ownKeys = new Set();     // messages this browser posted itself
 
 /* ---------- build the stage ---------- */
 const track = document.getElementById("track");
@@ -697,6 +698,12 @@ function absorb(key, m) {
     // a keeper who just spoke — even from the heartbeat — may answer one message unnamed
     if (!stageLocked && !k.external && !k.banner && !k.ghost) followUp = [k];
   }
+  // a message from outside this browser (a bot, another tab) still deserves an answer
+  const src = byKey[m.from];
+  const fromVisitorOrBot = !src || src.external;   // a person, or a bot like Nexie posting as herself
+  if (ANSWER_OUTSIDE_MESSAGES && !stageLocked && !ownKeys.has(key) && fromVisitorOrBot) {
+    answerOutside(key, m);
+  }
 }
 
 function claimedKeeper(m) {
@@ -758,8 +765,7 @@ function summonedBy(text, fromHuman = false, speaker = "") {
     if (k.ghost) {
       // a ghost stirs only for the voices named in summonableBy, and never for another keeper
       if (!fromHuman) continue;
-      const caller = String(speaker).trim().toLowerCase();
-      if (!(k.summonableBy || []).some(n => n.toLowerCase() === caller)) continue;
+      if (!canSummonGhost(k, speaker)) continue;
     }
     let first = -1;
     for (const a of k.aliases) {
@@ -770,6 +776,16 @@ function summonedBy(text, fromHuman = false, speaker = "") {
     if (first !== -1) found.push({ keeper: k, at: first });
   }
   return found.sort((a, b) => a.at - b.at).map(f => f.keeper);   // first named speaks first
+}
+
+// a ghost's caller: "Nexie", "NexieBot", "nexie_bot", "Nexie 🤖" all count
+function canSummonGhost(k, speaker) {
+  const caller = String(speaker || "").toLowerCase().replace(/[^a-z]/g, "");
+  if (!caller) return false;
+  return (k.summonableBy || []).some(n => {
+    const allowed = n.toLowerCase().replace(/[^a-z]/g, "");
+    return allowed && caller.includes(allowed);
+  });
 }
 
 /* ---------- history handed to a keeper ---------- */
@@ -807,7 +823,8 @@ async function sendMessage(e) {
   sendBtn.disabled = true;
 
   try {
-    await post({ from: "human", name, text });
+    const myKey = await post({ from: "human", name, text });
+    await claim(myKey);          // this tab is handling it; others stand down
 
     // who answers: those named — or, if no one is named, whoever just spoke (one time)
     let queue = summonedBy(text, true, name);
@@ -861,7 +878,59 @@ async function sendMessage(e) {
 
 async function post(m) {
   const r = await fb.push(fb.ref(db, "council/messages"), { ...m, at: fb.serverTimestamp() });
+  ownKeys.add(r.key);
   absorb(r.key, m);        // show it now; onChildAdded will dedupe
+  return r.key;
+}
+
+// claim a message so no other open tab answers it as well
+async function claim(key) {
+  try {
+    const lock = await fb.runTransaction(fb.ref(db, "council/answering/" + key),
+      cur => (cur === null ? Date.now() : undefined));
+    return lock.committed;
+  } catch { return false; }
+}
+
+/* ---------- answering messages this browser did not send ---------- */
+async function answerOutside(key, m) {
+  const src = byKey[m.from];
+  const speaker = src ? src.name : (m.name || "");   // "Nexie" whether she posts as a bot or types
+  const called = summonedBy(m.text || "", true, speaker);
+  if (!called.length) return;
+
+  // only one open tab may answer — first to claim it wins
+  if (!(await claim(key))) return;
+
+  const spoken = new Set();
+  const order = [];
+  let replies = 0;
+  const queue = called.slice();
+  const groupCall = new RegExp("\\b" + GROUP_WORD + "\\b", "i").test(m.text || "");
+
+  while (queue.length && replies < MAX_REPLIES) {
+    const k = queue.shift();
+    if (spoken.has(k.key)) continue;
+    spoken.add(k.key);
+    stepForward(k.key);
+    showPondering(k);
+    let reply = "";
+    try { reply = await ask(k); } catch (err) { console.error(err); }
+    clearPondering();
+    if (!reply) continue;
+    await post({ from: k.key, name: k.name, text: reply });
+    replies++;
+    if (KEEPERS_ANSWER_EACH_OTHER && !groupCall) {
+      for (const other of summonedBy(reply)) {
+        if (other.key !== k.key && !spoken.has(other.key)) queue.push(other);
+      }
+    }
+    order.push(k);
+  }
+  const lasting = order.filter(x => !x.ghost);
+  if (FOLLOW_UP === "last") followUp = lasting.slice(-1);
+  else if (FOLLOW_UP === "all") followUp = lasting;
+  trimCouncil();
 }
 
 async function ask(k) {
@@ -889,6 +958,16 @@ async function trimCouncil() {
     const updates = {};
     keys.slice(0, excess).forEach(key => { updates[key] = null; });
     await fb.update(fb.ref(db, "council/messages"), updates);
+    // prune the answer-locks for messages that no longer exist
+    try {
+      const locks = await fb.get(fb.ref(db, "council/answering"));
+      if (locks.exists()) {
+        const live = new Set(keys.slice(excess));
+        const dead = {};
+        Object.keys(locks.val()).forEach(kk => { if (!live.has(kk)) dead[kk] = null; });
+        if (Object.keys(dead).length) await fb.update(fb.ref(db, "council/answering"), dead);
+      }
+    } catch {}
   } catch (err) { console.error("trim failed", err); }
 }
 </script>
