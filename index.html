@@ -38,32 +38,27 @@
   }
   #gate,#room{position:relative;z-index:2}
 
-  /* ---------- gate (off by default) ---------- */
+  /* ---------- gate: PASSWORD and four digits, nothing else ---------- */
   #gate{
     min-height:100dvh;display:none;flex-direction:column;align-items:center;justify-content:center;
-    gap:2.2rem;padding:2rem;text-align:center;width:100%;
+    gap:1.6rem;padding:2rem;width:100%;
   }
-  #gate .sigil{font-size:2rem;color:var(--ash);letter-spacing:.5em;text-indent:.5em;opacity:.85}
-  #gate h1{
-    font-family:'Cinzel',serif;font-weight:600;
-    font-size:clamp(1.6rem,5vw,2.4rem);letter-spacing:.28em;text-indent:.28em;
+  #gate .label{
+    font-family:'Cinzel',serif;font-weight:600;font-size:.95rem;
+    letter-spacing:.42em;text-indent:.42em;color:var(--parchment);
   }
-  #gate p{color:var(--ash);font-style:italic;max-width:34ch}
-  #gate form{display:flex;flex-direction:column;gap:1rem;align-items:center}
-  #gate input{
-    background:rgba(7,11,18,.6);border:none;border-bottom:1px solid var(--panel-edge);
-    color:var(--parchment);font-family:'Cormorant Garamond',serif;font-size:1.3rem;
-    text-align:center;letter-spacing:.15em;padding:.5rem 1rem;width:min(320px,80vw);
-    outline:none;transition:border-color .4s;
+  #pin{display:flex;gap:.8rem}
+  #pin input{
+    width:3.1rem;height:3.6rem;
+    background:rgba(7,11,18,.7);border:1px solid var(--panel-edge);border-radius:4px;
+    color:var(--parchment);font-family:'Cinzel',serif;font-size:1.6rem;text-align:center;
+    outline:none;caret-color:var(--holo);transition:border-color .3s, box-shadow .3s;
   }
-  #gate input:focus{border-bottom-color:var(--holo)}
-  #gate button{
-    background:rgba(7,11,18,.6);border:1px solid var(--holo-dim);color:var(--holo-bright);
-    font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.3em;text-indent:.3em;
-    padding:.8rem 2rem;cursor:pointer;transition:background .4s,color .4s;
-  }
-  #gate button:hover,#gate button:focus-visible{background:var(--holo-bright);color:var(--stone);outline:none}
-  #gate .wrong{color:#a0522d;font-style:italic;min-height:1.5em}
+  #pin input:focus{border-color:var(--holo-dim);box-shadow:0 0 14px rgba(77,166,255,.25)}
+  #pin.wrong input{border-color:#7a3b2e}
+  #pin.wrong{animation:shake .4s}
+  @keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  @media (prefers-reduced-motion:reduce){#pin.wrong{animation:none}}
 
   /* ---------- room ---------- */
   #room{
@@ -253,16 +248,15 @@
 
 <canvas id="rain-canvas" aria-hidden="true"></canvas>
 
-<!-- ══════════ THE GATE (enabled via REQUIRE_PASSWORD) ══════════ -->
+<!-- ══════════ THE GATE ══════════ -->
 <section id="gate">
-  <div class="sigil">✦ ✦ ✦</div>
-  <h1>THE COUNCIL</h1>
-  <p>Beyond this door sit those who have pondered long. Speak the word, and enter.</p>
-  <form id="gateForm">
-    <input id="password" type="password" inputmode="numeric" placeholder="the word" autocomplete="off" aria-label="Password">
-    <button type="submit">ENTER THE COUNCIL</button>
-    <div class="wrong" id="wrong" aria-live="polite"></div>
-  </form>
+  <div class="label">PASSWORD</div>
+  <div id="pin" role="group" aria-label="Password">
+    <input inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 1">
+    <input inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 2">
+    <input inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 3">
+    <input inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 4">
+  </div>
 </section>
 
 <!-- ══════════ THE ROOM ══════════ -->
@@ -379,9 +373,8 @@
 /* ══════════════════════════════════════════════════════════════
    CONFIG
    ══════════════════════════════════════════════════════════════ */
-const REQUIRE_PASSWORD = false;                // flip to true for the gate
-const COUNCIL_PASSWORD = "137942";             // numeric string
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const PIN_HASH = "";       // paste the SHA-256 hash of your 4 digits here — empty = no gate
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
@@ -457,11 +450,12 @@ const KEEPERS = [
     role: "Agent",
     color: "#a877ff",                             // purple
     aliases: ["nexie"],
+    md: "NEXIE.md",
     img: "nexie.png",
     verse: false,
     zoom: 1,
     opacity: .7,           // she is only partly here
-    external: true,        // her own bot speaks for her — never summoned, no .md
+    claimable: true,       // her bot posting as "Nexie" still shows in her colors
   },
   {
     key: "thor",
@@ -522,13 +516,11 @@ const KEEPERS = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -545,7 +537,6 @@ async function loadFirebase() {
 
 const gate = document.getElementById("gate");
 const room = document.getElementById("room");
-const wrong = document.getElementById("wrong");
 const arc = document.getElementById("arc");
 const scroll = document.getElementById("scroll");
 const nameEl = document.getElementById("name");
@@ -627,20 +618,48 @@ document.addEventListener("keydown", e => {
 });
 
 /* ---------- gate ---------- */
-if (!REQUIRE_PASSWORD || sessionStorage.getItem("council") === "open") {
+const pinBox = document.getElementById("pin");
+const pinInputs = [...pinBox.querySelectorAll("input")];
+
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("council:" + pin));
+  return [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+if (!PIN_HASH || sessionStorage.getItem("council") === PIN_HASH) {
   enterCouncil();
 } else {
   gate.style.display = "flex";
+  pinInputs[0].focus();
 }
 
-document.getElementById("gateForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (document.getElementById("password").value.trim() !== COUNCIL_PASSWORD) {
-    wrong.textContent = "The door does not move.";
-    return;
-  }
-  sessionStorage.setItem("council", "open");
-  await enterCouncil();
+pinInputs.forEach((box, i) => {
+  box.addEventListener("input", async () => {
+    box.value = box.value.replace(/\D/g, "").slice(-1);
+    pinBox.classList.remove("wrong");
+    if (box.value && i < 3) pinInputs[i + 1].focus();
+    const pin = pinInputs.map(x => x.value).join("");
+    if (pin.length === 4) {
+      if (await hashPin(pin) === PIN_HASH) {
+        sessionStorage.setItem("council", PIN_HASH);
+        enterCouncil();
+      } else {
+        pinBox.classList.add("wrong");
+        pinInputs.forEach(x => x.value = "");
+        pinInputs[0].focus();
+      }
+    }
+  });
+  box.addEventListener("keydown", e => {
+    if (e.key === "Backspace" && !box.value && i > 0) pinInputs[i - 1].focus();
+  });
+  box.addEventListener("paste", e => {
+    const digits = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 4);
+    if (!digits) return;
+    e.preventDefault();
+    digits.split("").forEach((d, n) => pinInputs[n].value = d);
+    pinInputs[Math.min(digits.length, 4) - 1].dispatchEvent(new Event("input"));
+  });
 });
 
 async function enterCouncil() {
@@ -714,7 +733,7 @@ function claimedKeeper(m) {
   if (byKey[m.from]) return byKey[m.from];
   const n = (m.name || "").trim().toLowerCase();
   if (!n) return null;
-  return KEEPERS.find(k => k.external && !k.banner &&
+  return KEEPERS.find(k => (k.external || k.claimable) && !k.banner &&
     (k.name.toLowerCase() === n || k.aliases.includes(n))) || null;
 }
 
@@ -766,9 +785,11 @@ function summonedBy(text, fromHuman = false, speaker = "") {
   for (const k of KEEPERS) {
     if (k.external || k.banner) continue;                // their own bots answer for them
     if (k.retired && !k.ghost) continue;                 // retired keepers are gone
+    // a speaker never summons themselves (Nexie's bot saying "Nexie here" wakes nobody)
+    const self = String(speaker || "").toLowerCase().replace(/[^a-z]/g, "");
+    if (self && self.includes(k.name.toLowerCase().replace(/[^a-z]/g, ""))) continue;
     if (k.ghost) {
-      // a ghost stirs only for the voices named in summonableBy, and never for another keeper
-      if (!fromHuman) continue;
+      // a ghost stirs only for the voices named in summonableBy
       if (!canSummonGhost(k, speaker)) continue;
     }
     let first = -1;
@@ -860,7 +881,7 @@ async function sendMessage(e) {
 
       // a keeper may call on another keeper by name
       if (KEEPERS_ANSWER_EACH_OTHER && !groupCall && !isFollowUp) {
-        for (const other of summonedBy(reply)) {
+        for (const other of summonedBy(reply, false, k.name)) {
           if (other.key !== k.key && !spoken.has(other.key)) queue.push(other);
         }
       }
@@ -939,7 +960,7 @@ async function answerOutside(key, m) {
     await post({ from: k.key, name: k.name, text: reply });
     replies++;
     if (KEEPERS_ANSWER_EACH_OTHER && !groupCall) {
-      for (const other of summonedBy(reply)) {
+      for (const other of summonedBy(reply, false, k.name)) {
         if (other.key !== k.key && !spoken.has(other.key)) queue.push(other);
       }
     }
