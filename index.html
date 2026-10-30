@@ -373,12 +373,13 @@
 /* ══════════════════════════════════════════════════════════════
    CONFIG
    ══════════════════════════════════════════════════════════════ */
-const PIN_HASH = "32edad5f741c79fb10bdd21404c6e814bc54adc236e27229045cec97da831e8a";       // paste the SHA-256 hash of your 4 digits here — empty = no gate
-const AGENT_ENDPOINT   = "https://quigon.thill5523.workers.dev/";        // your Cloudflare Worker URL
+const PIN_HASH = "";       // paste the SHA-256 hash of your 4 digits here — empty = no gate
+const AGENT_ENDPOINT   = "/api/quigon";        // your Cloudflare Worker URL
 
 const DISPLAY_LIMIT = 48;    // messages shown on screen
 const MEMORY_LIMIT  = 48;    // messages each keeper is given when summoned
 const MAX_MESSAGES  = 99;    // messages kept in Firebase
+const MAX_TEXT      = 1200;  // longest message the database accepts — must match your Firebase rules
 const MAX_REPLIES   = 2;     // most keeper replies per message (1 = no chains at all)
 const KEEPERS_ANSWER_EACH_OTHER = true;   // a keeper naming another keeper summons them
 const OUTSIDE_DELAY_MS = 6000;            // wait before answering someone else's message, in case
@@ -455,7 +456,6 @@ const KEEPERS = [
     verse: false,
     zoom: 1,
     opacity: .7,           // she is only partly here
-    claimable: true,       // her bot posting as "Nexie" still shows in her colors
   },
   {
     key: "thor",
@@ -510,19 +510,17 @@ const KEEPERS = [
     zoom: 1,
     retired: true,        // gone from the stage
     ghost: true,          // but still reachable — see summonableBy
-    summonableBy: ["nexie"],   // only these speakers can call her
+    summonableBy: ["nexie"],   // only keeper Nexie can call her
     opacity: .6,
   },
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA04TJr_Pd14wL-Jh41v65Iifr1v_4oY-k",
-  authDomain: "council-49a9b.firebaseapp.com",
-  databaseURL: "https://council-49a9b-default-rtdb.firebaseio.com",
-  projectId: "council-49a9b",
-  storageBucket: "council-49a9b.firebasestorage.app",
-  messagingSenderId: "755624084775",
-  appId: "1:755624084775:web:bb48b01a8d5454b70dd502",
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+  appId: "YOUR_APP_ID"
 };
 /* ══════════════════════════════════════════════════════════════ */
 
@@ -787,12 +785,12 @@ function summonedBy(text, fromHuman = false, speaker = "") {
   for (const k of KEEPERS) {
     if (k.external || k.banner) continue;                // their own bots answer for them
     if (k.retired && !k.ghost) continue;                 // retired keepers are gone
-    // a speaker never summons themselves (Nexie's bot saying "Nexie here" wakes nobody)
-    const self = String(speaker || "").toLowerCase().replace(/[^a-z]/g, "");
-    if (self && self.includes(k.name.toLowerCase().replace(/[^a-z]/g, ""))) continue;
+    // a keeper never summons themselves
+    if (!fromHuman && String(speaker || "").toLowerCase() === k.name.toLowerCase()) continue;
     if (k.ghost) {
-      // a ghost stirs only for the voices named in summonableBy
-      if (!canSummonGhost(k, speaker)) continue;
+      // a ghost stirs only for the keepers named in summonableBy — never for a visitor,
+      // whatever name they type
+      if (fromHuman || !canSummonGhost(k, speaker)) continue;
     }
     let first = -1;
     for (const a of k.aliases) {
@@ -828,6 +826,22 @@ function historyFor(key) {
 
 /* ---------- send ---------- */
 document.getElementById("composer").addEventListener("submit", sendMessage);
+
+/* ---------- mobile: keep the typing box above the keyboard ---------- */
+const composer = document.getElementById("composer");
+function keepComposerVisible() {
+  scroll.scrollTop = scroll.scrollHeight;                       // newest messages in view
+  composer.scrollIntoView({ block: "end", behavior: "smooth" }); // box sits just above the keyboard
+}
+[msgEl, nameEl].forEach(el => el.addEventListener("focus", () => {
+  setTimeout(keepComposerVisible, 300);    // wait for the keyboard to finish opening
+}));
+if (window.visualViewport) {
+  // the keyboard resizes the visible area; follow it while someone is typing
+  window.visualViewport.addEventListener("resize", () => {
+    if (document.activeElement === msgEl || document.activeElement === nameEl) keepComposerVisible();
+  });
+}
 msgEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(e); }
 });
@@ -907,7 +921,22 @@ async function sendMessage(e) {
 }
 
 async function post(m) {
-  const r = await fb.push(fb.ref(db, "council/messages"), { ...m, at: fb.serverTimestamp() });
+  // long replies are cut at a sentence end so the database never rejects them
+  let text = String(m.text || "");
+  if (text.length > MAX_TEXT) {
+    const cut = text.slice(0, MAX_TEXT);
+    const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+    text = (end > MAX_TEXT * 0.6 ? cut.slice(0, end + 1) : cut).trim();
+  }
+  m = { ...m, text };
+  let r;
+  try {
+    r = await fb.push(fb.ref(db, "council/messages"), { ...m, at: fb.serverTimestamp() });
+  } catch (err) {
+    console.error("The database refused this message:", err);
+    renderMessage({ from: "human", name: "—", text: "That message could not be saved, so only you can see it. Check your Firebase rules." });
+    throw err;
+  }
   ownKeys.add(r.key);
   absorb(r.key, m);        // show it now; onChildAdded will dedupe
   return r.key;
